@@ -19,6 +19,9 @@ const WaterBills = lazy(() => import("@/pages/WaterBills"));
 const Revenue = lazy(() => import("@/pages/Revenue"));
 const UserManagement = lazy(() => import("@/pages/UserManagement"));
 
+// ✅ ADDED BILLING PAGE
+const Billing = lazy(() => import("@/pages/Billing"));
+
 const queryClient = new QueryClient();
 
 const LoadingScreen = () => (
@@ -46,9 +49,14 @@ const AuthenticatedApp = () => {
               <Route path="/apartments" element={<Apartments />} />
               <Route path="/electricity" element={<ElectricityBills />} />
               <Route path="/water" element={<WaterBills />} />
+
+              {/* ✅ ADDED BILLING ROUTE */}
+              <Route path="/billing" element={<Billing />} />
+
               <Route path="/revenue" element={<Revenue />} />
               <Route path="/users" element={<UserManagement />} />
             </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
