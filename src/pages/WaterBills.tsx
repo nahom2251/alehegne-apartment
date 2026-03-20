@@ -7,10 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Droplets } from "lucide-react";
 import { toast } from "sonner";
 
-import { generateBillPdf } from "@/utils/generateBillPdf";
-import { getPaymentMethod } from "@/utils/payment";
+// ✅ FIXED IMPORTS (Render-safe)
+import { generateBillPdf } from "../utils/generateBillPdf.ts";
+import { getPaymentMethod } from "../utils/payment.ts";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = [
+  "Jan","Feb","Mar","Apr","May","Jun",
+  "Jul","Aug","Sep","Oct","Nov","Dec"
+];
 
 export default function WaterBills() {
   const [bills, setBills] = useState<any[]>([]);
@@ -21,7 +25,10 @@ export default function WaterBills() {
   }, []);
 
   const fetchData = async () => {
-    const { data } = await supabase.from("water_bills").select("*, apartments(label, tenant_name)");
+    const { data } = await supabase
+      .from("water_bills")
+      .select("*, apartments(label, tenant_name)");
+
     if (data) setBills(data);
   };
 
@@ -32,7 +39,11 @@ export default function WaterBills() {
   );
 
   const markPaid = async (id: string) => {
-    await supabase.from("water_bills").update({ is_paid: true }).eq("id", id);
+    await supabase
+      .from("water_bills")
+      .update({ is_paid: true })
+      .eq("id", id);
+
     toast.success("Paid");
     fetchData();
   };
