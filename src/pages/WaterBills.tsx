@@ -1,146 +1,97 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Droplets, Plus, Loader2, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Droplets } from "lucide-react";
+import { toast } from "sonner";
 
-interface Apartment { id: string; label: string; tenant_name: string | null; }
-interface WaterBill {
-  id: string; apartment_id: string; month: number; year: number;
-  amount: number; is_paid: boolean | null;
-  apartments?: { label: string; tenant_name: string | null };
-}
+import { generateBillPdf } from "@/utils/generateBillPdf";
+import { getPaymentMethod } from "@/utils/payment";
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-const WaterBills = () => {
-  const { t } = useLanguage();
-  const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [bills, setBills] = useState<WaterBill[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ apartment_id: '', month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()), amount: '' });
+export default function WaterBills() {
+  const [bills, setBills] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState("");
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
-    const { data: apts } = await supabase.from('apartments').select('id, label, tenant_name').eq('is_occupied', true);
-    if (apts) setApartments(apts);
-    const { data: b } = await supabase.from('water_bills').select('*, apartments(label, tenant_name)').order('year', { ascending: false }).order('month', { ascending: false });
-    if (b) setBills(b as WaterBill[]);
+    const { data } = await supabase.from("water_bills").select("*, apartments(label, tenant_name)");
+    if (data) setBills(data);
   };
 
-  useEffect(() => { fetchData(); }, []);
-
-  const handleAdd = async () => {
-    if (!form.apartment_id || !form.amount) { toast.error('Fill all fields'); return; }
-    setSaving(true);
-    const { error } = await supabase.from('water_bills').insert({
-      apartment_id: form.apartment_id,
-      month: Number(form.month),
-      year: Number(form.year),
-      amount: Number(form.amount),
-    });
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(t('bill.add'));
-    setShowAdd(false);
-    fetchData();
-  };
+  const filtered = bills.filter((b) =>
+    selectedMonth
+      ? `${b.year}-${String(b.month).padStart(2, "0")}` === selectedMonth
+      : true
+  );
 
   const markPaid = async (id: string) => {
-    await supabase.from('water_bills').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', id);
-    toast.success(t('bill.paid'));
+    await supabase.from("water_bills").update({ is_paid: true }).eq("id", id);
+    toast.success("Paid");
     fetchData();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('nav.water')}</h1>
-        <Button onClick={() => setShowAdd(true)} className="gold-gradient text-card">
-          <Plus className="w-4 h-4 mr-1" /> {t('bill.add')}
-        </Button>
-      </div>
+    <div className="space-y-4">
+      <h1>Water Bills</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {bills.map((bill) => (
-          <Card key={bill.id}>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-sm flex items-center gap-1.5">
-                  <Droplets className="w-4 h-4 text-info" />
-                  {bill.apartments?.label}
+      <Input
+        type="month"
+        value={selectedMonth}
+        onChange={(e) => setSelectedMonth(e.target.value)}
+      />
+
+      <div className="grid md:grid-cols-3 gap-4">
+        {filtered.map((bill) => {
+          const payment = getPaymentMethod("Water");
+
+          return (
+            <Card key={bill.id}>
+              <CardHeader>
+                <CardTitle className="flex justify-between">
+                  <Droplets />
+                  <Badge>{bill.is_paid ? "PAID" : "PENDING"}</Badge>
                 </CardTitle>
-                <Badge variant={bill.is_paid ? 'default' : 'destructive'} className={bill.is_paid ? 'bg-success' : ''}>
-                  {bill.is_paid ? t('bill.paid') : t('bill.unpaid')}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="text-sm space-y-2">
-              <p className="text-muted-foreground">{bill.apartments?.tenant_name}</p>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{MONTHS[bill.month - 1]} {bill.year}</span>
-                <span className="font-semibold">{bill.amount?.toLocaleString()} {t('common.birr')}</span>
-              </div>
-              {!bill.is_paid && (
-                <Button size="sm" variant="outline" onClick={() => markPaid(bill.id)} className="w-full mt-2">
-                  <CheckCircle className="w-3 h-3 mr-1" /> {t('bill.markPaid')}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-        {bills.length === 0 && <p className="col-span-full text-center text-muted-foreground py-8">No water bills yet</p>}
-      </div>
+              </CardHeader>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{t('bill.add')} - {t('nav.water')}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">{t('nav.apartments')}</label>
-              <Select value={form.apartment_id} onValueChange={v => setForm({...form, apartment_id: v})}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {apartments.map(a => <SelectItem key={a.id} value={a.id}>{a.label} - {a.tenant_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">{t('bill.month')}</label>
-                <Select value={form.month} onValueChange={v => setForm({...form, month: v})}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m, i) => <SelectItem key={i} value={String(i+1)}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">{t('bill.year')}</label>
-                <Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} className="mt-1" />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t('bill.amount')}</label>
-              <Input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="mt-1" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>{t('apt.cancel')}</Button>
-            <Button onClick={handleAdd} disabled={saving} className="gold-gradient text-card">
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} {t('apt.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <CardContent>
+                <p>{bill.apartments?.tenant_name}</p>
+                <p>{bill.amount} ETB</p>
+
+                <Button
+                  className="w-full mt-2"
+                  onClick={() =>
+                    generateBillPdf({
+                      tenantName: bill.apartments?.tenant_name,
+                      unit: bill.apartments?.label,
+                      type: "Water",
+                      amount: bill.amount,
+                      month: `${MONTHS[bill.month - 1]} ${bill.year}`,
+                      paymentMethod: payment.method,
+                      accountInfo: `${payment.accountName} - ${payment.account}`,
+                      status: bill.is_paid ? "PAID" : "PENDING",
+                    })
+                  }
+                >
+                  Download {bill.is_paid ? "Receipt" : "Invoice"}
+                </Button>
+
+                {!bill.is_paid && (
+                  <Button onClick={() => markPaid(bill.id)} variant="outline">
+                    Mark Paid
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
-};
-
-export default WaterBills;
+}
