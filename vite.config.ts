@@ -42,4 +42,15 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
+  // ✅ IMPORTANT FIX FOR RENDER / ROLLUP
+  build: {
+    sourcemap: false,
+    chunkSizeWarningLimit: 2000,
+  },
+
+  // ✅ IMPORTANT FIX FOR PWA + IMPORT ISSUES
+  optimizeDeps: {
+    include: ["jspdf", "jspdf-autotable"]
+  }
 });
