@@ -11,15 +11,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Zap, Plus, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
-import { generateBillPdf } from "@/utils/generateBillPdf";
-import { getPaymentMethod } from "@/utils/payment";
+// ✅ FIXED IMPORTS (IMPORTANT FOR RENDER BUILD)
+import { generateBillPdf } from "@/utils/generateBillPdf.ts";
+import { getPaymentMethod } from "@/utils/payment.ts";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = [
+  "Jan","Feb","Mar","Apr","May","Jun",
+  "Jul","Aug","Sep","Oct","Nov","Dec"
+];
 
 export default function ElectricityBills() {
   const { t } = useLanguage();
@@ -62,10 +72,15 @@ export default function ElectricityBills() {
   );
 
   const markPaid = async (id: string) => {
-    await supabase
+    const { error } = await supabase
       .from("electricity_bills")
       .update({ is_paid: true, paid_at: new Date().toISOString() })
       .eq("id", id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
 
     toast.success("Marked as paid");
     fetchData();
@@ -107,7 +122,7 @@ export default function ElectricityBills() {
 
                 <p className="font-bold">{bill.total} ETB</p>
 
-                {/* DOWNLOAD */}
+                {/* DOWNLOAD PDF */}
                 <Button
                   className="w-full"
                   onClick={() =>
