@@ -21,7 +21,7 @@ import {
   Droplets,
   DollarSign,
   Users,
-  Settings,
+  FileText,
 } from 'lucide-react';
 
 const AppSidebar = () => {
@@ -36,6 +36,10 @@ const AppSidebar = () => {
     { title: t('nav.apartments'), url: '/apartments', icon: Building2 },
     { title: t('nav.electricity'), url: '/electricity', icon: Zap },
     { title: t('nav.water'), url: '/water', icon: Droplets },
+
+    // ✅ NEW: Billing System
+    { title: t('nav.billing'), url: '/billing', icon: FileText },
+
     { title: t('nav.revenue'), url: '/revenue', icon: DollarSign },
   ];
 
@@ -57,6 +61,7 @@ const AppSidebar = () => {
               </div>
             )}
           </SidebarGroupLabel>
+
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
@@ -78,9 +83,12 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter className="bg-sidebar border-t border-sidebar-border p-3">
         {!collapsed && (
-          <p className="text-xs text-muted-foreground text-center">{t('app.powered')}</p>
+          <p className="text-xs text-muted-foreground text-center">
+            {t('app.powered')}
+          </p>
         )}
       </SidebarFooter>
     </Sidebar>
