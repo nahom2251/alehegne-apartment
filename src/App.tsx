@@ -1,62 +1,69 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, HashRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import SplashScreen from "@/components/SplashScreen";
 import AppLayout from "@/components/AppLayout";
 import Auth from "@/pages/Auth";
 import PendingApproval from "@/pages/PendingApproval";
-import Dashboard from "@/pages/Dashboard";
-import Apartments from "@/pages/Apartments";
-import ElectricityBills from "@/pages/ElectricityBills";
-import WaterBills from "@/pages/WaterBills";
-import Revenue from "@/pages/Revenue";
-import UserManagement from "@/pages/UserManagement";
-import NotFound from "./pages/NotFound";
+import NotFound from "@/pages/NotFound";
+
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Apartments = lazy(() => import("@/pages/Apartments"));
+const ElectricityBills = lazy(() => import("@/pages/ElectricityBills"));
+const WaterBills = lazy(() => import("@/pages/WaterBills"));
+const Revenue = lazy(() => import("@/pages/Revenue"));
+const UserManagement = lazy(() => import("@/pages/UserManagement"));
 
 const queryClient = new QueryClient();
 
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
 const AuthenticatedApp = () => {
-  const { user, profile, loading, isApproved } =
-    require("@/contexts/AuthContext").useAuth();
-
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-
-  if (!user) return <Auth />;
-  if (!isApproved && profile) return <PendingApproval />;
+  const { user, profile, loading, isApproved } = useAuth();
 
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/apartments" element={<Apartments />} />
-        <Route path="/electricity" element={<ElectricityBills />} />
-        <Route path="/water" element={<WaterBills />} />
-        <Route path="/revenue" element={<Revenue />} />
-        <Route path="/users" element={<UserManagement />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      {loading && <LoadingScreen />}
+
+      {!loading && !user && <Auth />}
+
+      {!loading && user && !isApproved && profile && <PendingApproval />}
+
+      {!loading && user && isApproved && (
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/apartments" element={<Apartments />} />
+              <Route path="/electricity" element={<ElectricityBills />} />
+              <Route path="/water" element={<WaterBills />} />
+              <Route path="/revenue" element={<Revenue />} />
+              <Route path="/users" element={<UserManagement />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      )}
+    </>
   );
 };
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
-  // ✅ SAFETY fallback (prevents blank screen forever)
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 3000);
+    }, 1000); // fast splash
 
     return () => clearTimeout(timer);
   }, []);
