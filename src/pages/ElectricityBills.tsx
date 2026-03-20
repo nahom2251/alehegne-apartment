@@ -23,8 +23,8 @@ import { Zap, Plus, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 // ✅ FIXED IMPORTS (IMPORTANT FOR RENDER BUILD)
-import { generateBillPdf } from "@/utils/generateBillPdf.ts";
-import { getPaymentMethod } from "@/utils/payment.ts";
+import { generateBillPdf } from "@/utils/generateBillPdf";
+import { getPaymentMethod } from "@/utils/payment";
 
 const MONTHS = [
   "Jan","Feb","Mar","Apr","May","Jun",
