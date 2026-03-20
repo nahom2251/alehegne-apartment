@@ -4,16 +4,8 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   base: "/",
-
-  server: {
-    host: "::",
-    port: 8080,
-    hmr: {
-      overlay: false,
-    },
-  },
 
   plugins: [
     react(),
@@ -21,16 +13,14 @@ export default defineConfig(({ mode }) => ({
 
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "icon.png", "apple-touch-icon.png"],
+      includeAssets: ["favicon.ico", "icon.png"],
       manifest: {
-        name: "AS Apt. - Apartment Management System",
+        name: "AS Apt",
         short_name: "AS Apt",
-        description: "Apartment Management System for tenants and admin",
-        theme_color: "#ffffff",
-        background_color: "#ffffff",
-        display: "standalone",
         start_url: "/",
-        scope: "/",
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#ffffff",
         icons: [
           {
             src: "/icon-192.png",
@@ -52,4 +42,4 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-}));
+});
