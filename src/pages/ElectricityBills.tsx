@@ -4,27 +4,13 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Plus, Loader2, CheckCircle } from "lucide-react";
+import { Zap, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
-// ✅ FIXED IMPORTS (IMPORTANT FOR RENDER BUILD)
-import { generateBillPdf } from "@/utils/generateBillPdf";
-import { getPaymentMethod } from "@/utils/payment";
+// ✅ FIXED PATHS
+import { generateBillPdf } from "../lib/generateBillPdf";
+import { getPaymentMethod } from "../lib/payment";
 
 const MONTHS = [
   "Jan","Feb","Mar","Apr","May","Jun",
@@ -36,16 +22,7 @@ export default function ElectricityBills() {
 
   const [apartments, setApartments] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState("");
-
-  const [form, setForm] = useState({
-    apartment_id: "",
-    month: String(new Date().getMonth() + 1),
-    year: String(new Date().getFullYear()),
-    kwh: "",
-    rate: "",
-  });
 
   useEffect(() => {
     fetchData();
@@ -72,15 +49,10 @@ export default function ElectricityBills() {
   );
 
   const markPaid = async (id: string) => {
-    const { error } = await supabase
+    await supabase
       .from("electricity_bills")
       .update({ is_paid: true, paid_at: new Date().toISOString() })
       .eq("id", id);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
 
     toast.success("Marked as paid");
     fetchData();
@@ -90,7 +62,6 @@ export default function ElectricityBills() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Electricity Bills</h1>
 
-      {/* FILTER */}
       <div className="flex gap-2">
         <Input
           type="month"
@@ -115,14 +86,9 @@ export default function ElectricityBills() {
 
               <CardContent className="space-y-2">
                 <p>{bill.apartments?.tenant_name}</p>
-
-                <p>
-                  {MONTHS[bill.month - 1]} {bill.year}
-                </p>
-
+                <p>{MONTHS[bill.month - 1]} {bill.year}</p>
                 <p className="font-bold">{bill.total} ETB</p>
 
-                {/* DOWNLOAD PDF */}
                 <Button
                   className="w-full"
                   onClick={() =>
