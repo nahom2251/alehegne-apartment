@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Droplets } from "lucide-react";
 import { toast } from "sonner";
 
-// ✅ FIXED IMPORTS (Render-safe)
-import { generateBillPdf } from "../utils/generateBillPdf.ts";
-import { getPaymentMethod } from "../utils/payment.ts";
+// ✅ FIXED IMPORTS (NO .ts EXTENSIONS)
+import { generateBillPdf } from "../utils/generateBillPdf";
+import { getPaymentMethod } from "../utils/payment";
 
 const MONTHS = [
   "Jan","Feb","Mar","Apr","May","Jun",
@@ -44,14 +44,15 @@ export default function WaterBills() {
       .update({ is_paid: true })
       .eq("id", id);
 
-    toast.success("Paid");
+    toast.success("Paid successfully");
     fetchData();
   };
 
   return (
     <div className="space-y-4">
-      <h1>Water Bills</h1>
+      <h1 className="text-xl font-bold">Water Bills</h1>
 
+      {/* FILTER */}
       <Input
         type="month"
         value={selectedMonth}
@@ -65,16 +66,28 @@ export default function WaterBills() {
           return (
             <Card key={bill.id}>
               <CardHeader>
-                <CardTitle className="flex justify-between">
+                <CardTitle className="flex justify-between items-center">
                   <Droplets />
-                  <Badge>{bill.is_paid ? "PAID" : "PENDING"}</Badge>
+                  <Badge>
+                    {bill.is_paid ? "PAID" : "PENDING"}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
 
-              <CardContent>
-                <p>{bill.apartments?.tenant_name}</p>
-                <p>{bill.amount} ETB</p>
+              <CardContent className="space-y-2">
+                <p className="font-medium">
+                  {bill.apartments?.tenant_name}
+                </p>
 
+                <p>
+                  {MONTHS[bill.month - 1]} {bill.year}
+                </p>
+
+                <p className="font-bold">
+                  {bill.amount} ETB
+                </p>
+
+                {/* PDF DOWNLOAD */}
                 <Button
                   className="w-full mt-2"
                   onClick={() =>
@@ -93,8 +106,13 @@ export default function WaterBills() {
                   Download {bill.is_paid ? "Receipt" : "Invoice"}
                 </Button>
 
+                {/* MARK PAID */}
                 {!bill.is_paid && (
-                  <Button onClick={() => markPaid(bill.id)} variant="outline">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => markPaid(bill.id)}
+                  >
                     Mark Paid
                   </Button>
                 )}
