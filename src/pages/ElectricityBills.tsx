@@ -1,177 +1,146 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Zap, Plus, Loader2, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Zap, Plus, Loader2, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
 
-interface Apartment { id: string; label: string; tenant_name: string | null; is_occupied: boolean | null; }
-interface ElecBill {
-  id: string; apartment_id: string; month: number; year: number;
-  kwh: number; rate: number; base_cost: number; service_fee: number | null;
-  tax_percent: number | null; tv_tax: number | null; control_tax_percent: number | null;
-  total: number | null; is_paid: boolean | null;
-  apartments?: { label: string; tenant_name: string | null };
-}
+import { generateBillPdf } from "@/utils/generateBillPdf";
+import { getPaymentMethod } from "@/utils/payment";
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-const ElectricityBills = () => {
+export default function ElectricityBills() {
   const { t } = useLanguage();
-  const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [bills, setBills] = useState<ElecBill[]>([]);
+
+  const [apartments, setApartments] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ apartment_id: '', month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()), kwh: '', rate: '' });
+  const [selectedMonth, setSelectedMonth] = useState("");
+
+  const [form, setForm] = useState({
+    apartment_id: "",
+    month: String(new Date().getMonth() + 1),
+    year: String(new Date().getFullYear()),
+    kwh: "",
+    rate: "",
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
-    const { data: apts } = await supabase.from('apartments').select('id, label, tenant_name, is_occupied').eq('is_occupied', true);
-    if (apts) setApartments(apts);
-    const { data: b } = await supabase.from('electricity_bills').select('*, apartments(label, tenant_name)').order('year', { ascending: false }).order('month', { ascending: false });
-    if (b) setBills(b as ElecBill[]);
+    const { data: a } = await supabase
+      .from("apartments")
+      .select("*")
+      .eq("is_occupied", true);
+
+    const { data: b } = await supabase
+      .from("electricity_bills")
+      .select("*, apartments(label, tenant_name)");
+
+    if (a) setApartments(a);
+    if (b) setBills(b);
   };
 
-  useEffect(() => { fetchData(); }, []);
-
-  const calculateTotal = (kwh: number, rate: number) => {
-    const baseCost = kwh * rate;
-    const serviceFee = 16;
-    const taxPercent = 15;
-    const tvTax = 10;
-    const controlTaxPercent = 0.5;
-    const tax = baseCost * (taxPercent / 100);
-    const controlTax = baseCost * (controlTaxPercent / 100);
-    return baseCost + serviceFee + tax + tvTax + controlTax;
-  };
-
-  const handleAdd = async () => {
-    if (!form.apartment_id || !form.kwh || !form.rate) { toast.error('Fill all fields'); return; }
-    setSaving(true);
-    const kwh = Number(form.kwh);
-    const rate = Number(form.rate);
-    const total = calculateTotal(kwh, rate);
-    const baseCost = kwh * rate;
-
-    const { error } = await supabase.from('electricity_bills').insert({
-      apartment_id: form.apartment_id,
-      month: Number(form.month),
-      year: Number(form.year),
-      kwh, rate, base_cost: baseCost, total,
-    });
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(t('bill.add'));
-    setShowAdd(false);
-    setForm({ apartment_id: '', month: String(new Date().getMonth() + 1), year: String(new Date().getFullYear()), kwh: '', rate: '' });
-    fetchData();
-  };
+  const filtered = bills.filter((b) =>
+    selectedMonth
+      ? `${b.year}-${String(b.month).padStart(2, "0")}` === selectedMonth
+      : true
+  );
 
   const markPaid = async (id: string) => {
-    await supabase.from('electricity_bills').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', id);
-    toast.success(t('bill.paid'));
+    await supabase
+      .from("electricity_bills")
+      .update({ is_paid: true, paid_at: new Date().toISOString() })
+      .eq("id", id);
+
+    toast.success("Marked as paid");
     fetchData();
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('nav.electricity')}</h1>
-        <Button onClick={() => setShowAdd(true)} className="gold-gradient text-card">
-          <Plus className="w-4 h-4 mr-1" /> {t('bill.add')}
-        </Button>
+      <h1 className="text-2xl font-bold">Electricity Bills</h1>
+
+      {/* FILTER */}
+      <div className="flex gap-2">
+        <Input
+          type="month"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+        />
+        <Button onClick={() => setSelectedMonth("")}>Clear</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {bills.map((bill) => (
-          <Card key={bill.id}>
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-sm flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-primary" />
+      <div className="grid gap-4 md:grid-cols-3">
+        {filtered.map((bill) => {
+          const payment = getPaymentMethod("Electricity");
+
+          return (
+            <Card key={bill.id}>
+              <CardHeader>
+                <CardTitle className="flex justify-between">
                   {bill.apartments?.label}
+                  <Badge>{bill.is_paid ? "PAID" : "PENDING"}</Badge>
                 </CardTitle>
-                <Badge variant={bill.is_paid ? 'default' : 'destructive'} className={bill.is_paid ? 'bg-success' : ''}>
-                  {bill.is_paid ? t('bill.paid') : t('bill.unpaid')}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="text-sm space-y-2">
-              <p className="text-muted-foreground">{bill.apartments?.tenant_name}</p>
-              <div className="grid grid-cols-2 gap-1">
-                <span className="text-muted-foreground">{MONTHS[bill.month - 1]} {bill.year}</span>
-                <span className="text-right font-semibold">{bill.total?.toLocaleString()} {t('common.birr')}</span>
-                <span className="text-muted-foreground">{bill.kwh} kWh × {bill.rate}</span>
-              </div>
-              {!bill.is_paid && (
-                <Button size="sm" variant="outline" onClick={() => markPaid(bill.id)} className="w-full mt-2">
-                  <CheckCircle className="w-3 h-3 mr-1" /> {t('bill.markPaid')}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-        {bills.length === 0 && <p className="col-span-full text-center text-muted-foreground py-8">No electricity bills yet</p>}
-      </div>
+              </CardHeader>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{t('bill.add')} - {t('nav.electricity')}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">{t('nav.apartments')}</label>
-              <Select value={form.apartment_id} onValueChange={v => setForm({...form, apartment_id: v})}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {apartments.map(a => <SelectItem key={a.id} value={a.id}>{a.label} - {a.tenant_name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">{t('bill.month')}</label>
-                <Select value={form.month} onValueChange={v => setForm({...form, month: v})}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m, i) => <SelectItem key={i} value={String(i+1)}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">{t('bill.year')}</label>
-                <Input type="number" value={form.year} onChange={e => setForm({...form, year: e.target.value})} className="mt-1" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">{t('bill.kwh')}</label>
-                <Input type="number" value={form.kwh} onChange={e => setForm({...form, kwh: e.target.value})} className="mt-1" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">{t('bill.rate')}</label>
-                <Input type="number" step="0.01" value={form.rate} onChange={e => setForm({...form, rate: e.target.value})} className="mt-1" />
-              </div>
-            </div>
-            {form.kwh && form.rate && (
-              <div className="p-3 rounded-lg bg-muted text-sm">
-                <p className="font-semibold">{t('bill.total')}: {calculateTotal(Number(form.kwh), Number(form.rate)).toFixed(2)} {t('common.birr')}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>{t('apt.cancel')}</Button>
-            <Button onClick={handleAdd} disabled={saving} className="gold-gradient text-card">
-              {saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />} {t('apt.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <CardContent className="space-y-2">
+                <p>{bill.apartments?.tenant_name}</p>
+
+                <p>
+                  {MONTHS[bill.month - 1]} {bill.year}
+                </p>
+
+                <p className="font-bold">{bill.total} ETB</p>
+
+                {/* DOWNLOAD */}
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    generateBillPdf({
+                      tenantName: bill.apartments?.tenant_name,
+                      unit: bill.apartments?.label,
+                      type: "Electricity",
+                      amount: bill.total,
+                      month: `${MONTHS[bill.month - 1]} ${bill.year}`,
+                      paymentMethod: payment.method,
+                      accountInfo: `${payment.accountName} - ${payment.account}`,
+                      status: bill.is_paid ? "PAID" : "PENDING",
+                    })
+                  }
+                >
+                  Download {bill.is_paid ? "Receipt" : "Invoice"}
+                </Button>
+
+                {!bill.is_paid && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => markPaid(bill.id)}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Mark Paid
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
-};
-
-export default ElectricityBills;
+}
