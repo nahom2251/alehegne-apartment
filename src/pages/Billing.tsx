@@ -5,37 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { format } from "date-fns";
 
 type ElectricityBill = {
   id: string;
-  apartment_id: string;
   month: number;
   year: number;
   total: number;
   is_paid: boolean;
-  paid_at: string | null;
 };
 
 type WaterBill = {
   id: string;
-  apartment_id: string;
   month: number;
   year: number;
   amount: number;
   is_paid: boolean;
-  paid_at: string | null;
 };
 
 type RentPayment = {
   id: string;
-  apartment_id: string;
-  months_paid: number;
   amount: number;
+  months_paid: number;
   payment_date: string;
   period_start: string;
   period_end: string;
 };
+
+const CBE_ACCOUNT = "Bayush Kassa - 1000499143072";
+const TELEBIRR_ACCOUNT = "Alehegne - 0911238816";
 
 export default function Billing() {
   const [electricity, setElectricity] = useState<ElectricityBill[]>([]);
@@ -43,7 +40,6 @@ export default function Billing() {
   const [rent, setRent] = useState<RentPayment[]>([]);
   const [filter, setFilter] = useState("");
 
-  // ---------------- FETCH DATA ----------------
   const fetchAll = async () => {
     const [e, w, r] = await Promise.all([
       supabase.from("electricity_bills").select("*"),
@@ -52,7 +48,7 @@ export default function Billing() {
     ]);
 
     if (e.data) setElectricity(e.data);
-    if (w.data) setWater(w.data);
+    if (w.data) setWater(e.data ? w.data : w.data);
     if (r.data) setRent(r.data);
   };
 
@@ -60,68 +56,60 @@ export default function Billing() {
     fetchAll();
   }, []);
 
-  // ---------------- FILTER ----------------
-  const matchFilter = (value: string) =>
-    filter ? value.includes(filter) : true;
+  const matchFilter = (month: number, year: number) => {
+    if (!filter) return true;
+    return `${month}-${year}`.includes(filter);
+  };
 
-  // ---------------- MARK PAID ----------------
-  const markElectricityPaid = async (id: string) => {
+  const markPaid = async (table: string, id: string, msg: string) => {
     const { error } = await supabase
-      .from("electricity_bills")
+      .from(table)
       .update({ is_paid: true, paid_at: new Date().toISOString() })
       .eq("id", id);
 
     if (error) return toast.error(error.message);
-    toast.success("Electricity bill marked as paid");
+    toast.success(msg);
     fetchAll();
   };
 
-  const markWaterPaid = async (id: string) => {
-    const { error } = await supabase
-      .from("water_bills")
-      .update({ is_paid: true, paid_at: new Date().toISOString() })
-      .eq("id", id);
-
-    if (error) return toast.error(error.message);
-    toast.success("Water bill marked as paid");
-    fetchAll();
-  };
-
-  // ---------------- PDF (simple download) ----------------
-  const downloadFile = (title: string, content: string) => {
-    const blob = new Blob([content], { type: "text/plain" });
+  const downloadInvoice = (title: string, content: string) => {
+    const blob = new Blob([content], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title}.txt`;
+    a.download = `${title}.pdf`;
     a.click();
   };
 
-  // ---------------- UI RENDER ----------------
+  const invoiceTemplate = (data: string, status: string) => `
+=============================
+        INVOICE
+=============================
+${data}
+
+STATUS: ${status}
+
+-----------------------------
+PAYMENT DETAILS
+CBE: ${CBE_ACCOUNT}
+Telebirr: ${TELEBIRR_ACCOUNT}
+
+-----------------------------
+Powered by NUN tech
+=============================
+`;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Billing System</h1>
 
       {/* FILTER */}
       <Input
-        placeholder="Filter by month or year (e.g. 2025 or 12)"
+        placeholder="Filter by month/year (e.g. 2025 or 12)"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
 
-      {/* PAYMENT INFO */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Accounts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>CBE: Bayush Kassa - 1000499143072</p>
-          <p>Telebirr: Alehegne - 0911238816</p>
-        </CardContent>
-      </Card>
-
-      {/* TABS */}
       <Tabs defaultValue="electricity">
         <TabsList>
           <TabsTrigger value="electricity">Electricity</TabsTrigger>
@@ -129,20 +117,28 @@ export default function Billing() {
           <TabsTrigger value="rent">Rent</TabsTrigger>
         </TabsList>
 
-        {/* ---------------- ELECTRICITY ---------------- */}
+        {/* ELECTRICITY */}
         <TabsContent value="electricity">
           {electricity
-            .filter((b) => matchFilter(`${b.month}-${b.year}`))
+            .filter((b) => matchFilter(b.month, b.year))
             .map((b) => (
-              <Card key={b.id} className="mb-3">
+              <Card key={b.id}>
                 <CardContent className="p-4 space-y-2">
-                  <p>Month: {b.month}/{b.year}</p>
-                  <p>Total: {b.total} Birr</p>
-                  <p>Status: {b.is_paid ? "PAID" : "PENDING"}</p>
+                  <p>{b.month}/{b.year}</p>
+                  <p>{b.total} ETB</p>
+                  <p>{b.is_paid ? "PAID" : "PENDING"}</p>
 
                   <div className="flex gap-2">
                     {!b.is_paid && (
-                      <Button onClick={() => markElectricityPaid(b.id)}>
+                      <Button
+                        onClick={() =>
+                          markPaid(
+                            "electricity_bills",
+                            b.id,
+                            "Electricity marked paid"
+                          )
+                        }
+                      >
                         Mark Paid
                       </Button>
                     )}
@@ -150,21 +146,16 @@ export default function Billing() {
                     <Button
                       variant="outline"
                       onClick={() =>
-                        downloadFile(
-                          "electricity-invoice",
-                          `
-ELECTRICITY BILL
-Month: ${b.month}/${b.year}
-Amount: ${b.total}
-
-${b.is_paid ? "PAID ✔" : "PENDING"}
-
-Powered by NUN tech
-                          `
+                        downloadInvoice(
+                          "electricity",
+                          invoiceTemplate(
+                            `Electricity Bill: ${b.month}/${b.year}\nAmount: ${b.total} ETB`,
+                            b.is_paid ? "PAID ✔" : "PENDING"
+                          )
                         )
                       }
                     >
-                      Download
+                      Download PDF
                     </Button>
                   </div>
                 </CardContent>
@@ -172,20 +163,28 @@ Powered by NUN tech
             ))}
         </TabsContent>
 
-        {/* ---------------- WATER ---------------- */}
+        {/* WATER */}
         <TabsContent value="water">
           {water
-            .filter((b) => matchFilter(`${b.month}-${b.year}`))
+            .filter((b) => matchFilter(b.month, b.year))
             .map((b) => (
-              <Card key={b.id} className="mb-3">
+              <Card key={b.id}>
                 <CardContent className="p-4 space-y-2">
-                  <p>Month: {b.month}/{b.year}</p>
-                  <p>Amount: {b.amount} Birr</p>
-                  <p>Status: {b.is_paid ? "PAID" : "PENDING"}</p>
+                  <p>{b.month}/{b.year}</p>
+                  <p>{b.amount} ETB</p>
+                  <p>{b.is_paid ? "PAID" : "PENDING"}</p>
 
                   <div className="flex gap-2">
                     {!b.is_paid && (
-                      <Button onClick={() => markWaterPaid(b.id)}>
+                      <Button
+                        onClick={() =>
+                          markPaid(
+                            "water_bills",
+                            b.id,
+                            "Water marked paid"
+                          )
+                        }
+                      >
                         Mark Paid
                       </Button>
                     )}
@@ -193,21 +192,16 @@ Powered by NUN tech
                     <Button
                       variant="outline"
                       onClick={() =>
-                        downloadFile(
-                          "water-invoice",
-                          `
-WATER BILL
-Month: ${b.month}/${b.year}
-Amount: ${b.amount}
-
-${b.is_paid ? "PAID ✔" : "PENDING"}
-
-Powered by NUN tech
-                          `
+                        downloadInvoice(
+                          "water",
+                          invoiceTemplate(
+                            `Water Bill: ${b.month}/${b.year}\nAmount: ${b.amount} ETB`,
+                            b.is_paid ? "PAID ✔" : "PENDING"
+                          )
                         )
                       }
                     >
-                      Download
+                      Download PDF
                     </Button>
                   </div>
                 </CardContent>
@@ -215,33 +209,23 @@ Powered by NUN tech
             ))}
         </TabsContent>
 
-        {/* ---------------- RENT ---------------- */}
+        {/* RENT */}
         <TabsContent value="rent">
           {rent.map((r) => (
-            <Card key={r.id} className="mb-3">
+            <Card key={r.id}>
               <CardContent className="p-4 space-y-2">
-                <p>Amount: {r.amount} Birr</p>
-                <p>Months Paid: {r.months_paid}</p>
-                <p>
-                  Period: {r.period_start} → {r.period_end}
-                </p>
+                <p>{r.amount} ETB</p>
+                <p>{r.months_paid} months</p>
 
                 <Button
                   variant="outline"
                   onClick={() =>
-                    downloadFile(
-                      "rent-receipt",
-                      `
-RENT PAYMENT RECEIPT
-Amount: ${r.amount}
-Months: ${r.months_paid}
-From: ${r.period_start}
-To: ${r.period_end}
-
-STATUS: PAID ✔
-
-Powered by NUN tech
-                      `
+                    downloadInvoice(
+                      "rent",
+                      invoiceTemplate(
+                        `Rent Payment\nAmount: ${r.amount} ETB\nPeriod: ${r.period_start} → ${r.period_end}`,
+                        "PAID ✔"
+                      )
                     )
                   }
                 >
