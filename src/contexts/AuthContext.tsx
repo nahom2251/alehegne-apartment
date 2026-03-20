@@ -39,7 +39,6 @@ interface AuthContextType {
 
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-
   resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
@@ -54,32 +53,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ FETCH PROFILE + ROLES (FIXED)
   const fetchProfile = async (userId: string) => {
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+    try {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
 
-    if (profileData) {
-      setProfile(profileData as Profile);
-    }
+      if (profileData) {
+        setProfile(profileData as Profile);
+      }
 
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
 
-    if (rolesData) {
-      setRoles(rolesData.map((r: UserRole) => r.role));
+      if (rolesData) {
+        setRoles(rolesData.map((r: UserRole) => r.role));
+      }
+    } catch (err) {
+      console.error("Profile fetch error:", err);
     }
   };
 
+  // ✅ MANUAL REFRESH (used after approval if needed)
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) {
+      await fetchProfile(user.id);
+    }
   };
 
   useEffect(() => {
+    // ✅ LISTEN FOR AUTH CHANGES (FIXED)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -87,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setTimeout(() => fetchProfile(session.user.id), 0);
+        await fetchProfile(session.user.id); // ✅ FIX: removed setTimeout
       } else {
         setProfile(null);
         setRoles([]);
@@ -96,21 +104,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // ✅ INITIAL SESSION LOAD (FIXED)
+    const loadSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
       }
 
       setLoading(false);
-    });
+    };
+
+    loadSession();
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // 🔐 LOGIN (with rememberMe support)
+  // 🔐 LOGIN
   const signIn = async (
     email: string,
     password: string,
@@ -121,9 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       password,
     });
 
-    // NOTE:
-    // Supabase already persists session automatically.
-    // rememberMe is kept for future extension (cookie/session strategy)
     if (!rememberMe) {
       await supabase.auth.signOut();
     }
