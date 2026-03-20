@@ -14,16 +14,263 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      apartments: {
+        Row: {
+          created_at: string
+          floor: number
+          id: string
+          is_occupied: boolean | null
+          label: string
+          monthly_rent: number | null
+          move_in_date: string | null
+          position: string
+          rent_paid_months: number | null
+          tenant_name: string | null
+          tenant_phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          floor: number
+          id?: string
+          is_occupied?: boolean | null
+          label: string
+          monthly_rent?: number | null
+          move_in_date?: string | null
+          position: string
+          rent_paid_months?: number | null
+          tenant_name?: string | null
+          tenant_phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          floor?: number
+          id?: string
+          is_occupied?: boolean | null
+          label?: string
+          monthly_rent?: number | null
+          move_in_date?: string | null
+          position?: string
+          rent_paid_months?: number | null
+          tenant_name?: string | null
+          tenant_phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      electricity_bills: {
+        Row: {
+          apartment_id: string
+          base_cost: number
+          control_tax_percent: number | null
+          created_at: string
+          id: string
+          is_paid: boolean | null
+          kwh: number
+          month: number
+          paid_at: string | null
+          rate: number
+          service_fee: number | null
+          tax_percent: number | null
+          total: number | null
+          tv_tax: number | null
+          year: number
+        }
+        Insert: {
+          apartment_id: string
+          base_cost?: number
+          control_tax_percent?: number | null
+          created_at?: string
+          id?: string
+          is_paid?: boolean | null
+          kwh?: number
+          month: number
+          paid_at?: string | null
+          rate?: number
+          service_fee?: number | null
+          tax_percent?: number | null
+          total?: number | null
+          tv_tax?: number | null
+          year: number
+        }
+        Update: {
+          apartment_id?: string
+          base_cost?: number
+          control_tax_percent?: number | null
+          created_at?: string
+          id?: string
+          is_paid?: boolean | null
+          kwh?: number
+          month?: number
+          paid_at?: string | null
+          rate?: number
+          service_fee?: number | null
+          tax_percent?: number | null
+          total?: number | null
+          tv_tax?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "electricity_bills_apartment_id_fkey"
+            columns: ["apartment_id"]
+            isOneToOne: false
+            referencedRelation: "apartments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          language: string
+          status: Database["public"]["Enums"]["approval_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          language?: string
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          language?: string
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      rent_payments: {
+        Row: {
+          amount: number
+          apartment_id: string
+          created_at: string
+          id: string
+          months_paid: number
+          payment_date: string
+          period_end: string
+          period_start: string
+        }
+        Insert: {
+          amount: number
+          apartment_id: string
+          created_at?: string
+          id?: string
+          months_paid?: number
+          payment_date?: string
+          period_end: string
+          period_start: string
+        }
+        Update: {
+          amount?: number
+          apartment_id?: string
+          created_at?: string
+          id?: string
+          months_paid?: number
+          payment_date?: string
+          period_end?: string
+          period_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_payments_apartment_id_fkey"
+            columns: ["apartment_id"]
+            isOneToOne: false
+            referencedRelation: "apartments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      water_bills: {
+        Row: {
+          amount: number
+          apartment_id: string
+          created_at: string
+          id: string
+          is_paid: boolean | null
+          month: number
+          paid_at: string | null
+          year: number
+        }
+        Insert: {
+          amount?: number
+          apartment_id: string
+          created_at?: string
+          id?: string
+          is_paid?: boolean | null
+          month: number
+          paid_at?: string | null
+          year: number
+        }
+        Update: {
+          amount?: number
+          apartment_id?: string
+          created_at?: string
+          id?: string
+          is_paid?: boolean | null
+          month?: number
+          paid_at?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_bills_apartment_id_fkey"
+            columns: ["apartment_id"]
+            isOneToOne: false
+            referencedRelation: "apartments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_approved: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "admin" | "user"
+      approval_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +397,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "admin", "user"],
+      approval_status: ["pending", "approved", "rejected"],
+    },
   },
 } as const
