@@ -23,9 +23,9 @@ type MonthData = {
 };
 
 export default function Revenue() {
-  const [rentRevenue, setRentRevenue] = useState({ paid: 0, pending: 0 });
-  const [elecRevenue, setElecRevenue] = useState({ paid: 0, pending: 0 });
-  const [waterRevenue, setWaterRevenue] = useState({ paid: 0, pending: 0 });
+  const [rentRevenue, setRentRevenue] = useState({ paid: 0 });
+  const [elecRevenue, setElecRevenue] = useState({ paid: 0 });
+  const [waterRevenue, setWaterRevenue] = useState({ paid: 0 });
 
   const [chartData, setChartData] = useState<MonthData[]>([]);
 
@@ -37,10 +37,6 @@ export default function Revenue() {
     new Date(date).toLocaleString("default", { month: "short" });
 
   const fetchRevenue = async () => {
-    const { data: apts } = await supabase
-      .from("apartments")
-      .select("monthly_rent, rent_paid_months, is_occupied");
-
     const { data: elec } = await supabase
       .from("electricity_bills")
       .select("total, is_paid, created_at");
@@ -49,28 +45,12 @@ export default function Revenue() {
       .from("water_bills")
       .select("amount, is_paid, created_at");
 
-    if (apts) {
-      const occupied = apts.filter(a => a.is_occupied);
-
-      const paid = occupied.reduce(
-        (sum, a) =>
-          sum + ((a.monthly_rent || 0) * (a.rent_paid_months || 0)),
-        0
-      );
-
-      setRentRevenue({ paid, pending: 0 });
-    }
-
     if (elec) {
       const paid = elec
         .filter(e => e.is_paid)
         .reduce((s, e) => s + (e.total || 0), 0);
 
-      const pending = elec
-        .filter(e => !e.is_paid)
-        .reduce((s, e) => s + (e.total || 0), 0);
-
-      setElecRevenue({ paid, pending });
+      setElecRevenue({ paid });
     }
 
     if (water) {
@@ -78,21 +58,13 @@ export default function Revenue() {
         .filter(w => w.is_paid)
         .reduce((s, w) => s + (w.amount || 0), 0);
 
-      const pending = water
-        .filter(w => !w.is_paid)
-        .reduce((s, w) => s + (w.amount || 0), 0);
-
-      setWaterRevenue({ paid, pending });
+      setWaterRevenue({ paid });
     }
 
-    // CHART DATA
+    // chart
     const map: Record<string, MonthData> = {};
 
-    const add = (
-      type: keyof MonthData,
-      amount: number,
-      date: string
-    ) => {
+    const add = (type: keyof MonthData, amount: number, date: string) => {
       const m = getMonth(date);
 
       if (!map[m]) {
@@ -114,9 +86,7 @@ export default function Revenue() {
   };
 
   const totalPaid =
-    rentRevenue.paid +
-    elecRevenue.paid +
-    waterRevenue.paid;
+    elecRevenue.paid + waterRevenue.paid;
 
   const downloadPDF = () => {
     const doc = new jsPDF();
@@ -126,9 +96,9 @@ export default function Revenue() {
 
     let y = 40;
 
-    chartData.forEach((d) => {
+    chartData.forEach(d => {
       doc.text(
-        `${d.month} | Rent: ${d.rent} | Water: ${d.water} | Electricity: ${d.electricity}`,
+        `${d.month} | Water: ${d.water} | Electricity: ${d.electricity}`,
         14,
         y
       );
@@ -166,7 +136,6 @@ export default function Revenue() {
             <XAxis dataKey="month" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="rent" />
             <Bar dataKey="water" />
             <Bar dataKey="electricity" />
           </BarChart>
