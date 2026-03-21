@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import AppSidebar from '@/components/AppSidebar';
 import LanguageToggle from '@/components/LanguageToggle';
+import NotificationBell from '@/components/NotificationBell';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const AppLayout = () => {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <LanguageToggle />
               <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5 text-muted-foreground hover:text-foreground">
                 <LogOut className="w-4 h-4" />

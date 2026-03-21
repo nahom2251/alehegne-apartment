@@ -21,13 +21,15 @@ import {
   Droplets,
   DollarSign,
   Users,
-  Settings,
+  X,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AppSidebar = () => {
-  const { state } = useSidebar();
+  const { state, toggleSidebar } = useSidebar();
   const collapsed = state === 'collapsed';
-  const location = useLocation();
+  const isMobile = useIsMobile();
   const { isSuperAdmin } = useAuth();
   const { t } = useLanguage();
 
@@ -48,14 +50,21 @@ const AppSidebar = () => {
       <SidebarContent className="bg-sidebar">
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 py-3">
-            {!collapsed && (
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center">
-                  <Building2 className="w-4 h-4 text-card" />
+            <div className="flex items-center justify-between w-full">
+              {!collapsed && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg gold-gradient flex items-center justify-center">
+                    <Building2 className="w-4 h-4 text-card" />
+                  </div>
+                  <span className="font-bold text-sm text-sidebar-foreground">AS Apt.</span>
                 </div>
-                <span className="font-bold text-sm text-sidebar-foreground">AS Apt.</span>
-              </div>
-            )}
+              )}
+              {isMobile && !collapsed && (
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground" onClick={toggleSidebar}>
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -67,6 +76,7 @@ const AppSidebar = () => {
                       end={item.url === '/'}
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                      onClick={() => isMobile && toggleSidebar()}
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
