@@ -324,6 +324,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_available_apartments: {
+        Args: never
+        Returns: {
+          id: string
+          label: string
+          tenant_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
