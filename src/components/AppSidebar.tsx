@@ -90,7 +90,10 @@ const AppSidebar = () => {
       </SidebarContent>
       <SidebarFooter className="bg-sidebar border-t border-sidebar-border p-3">
         {!collapsed && (
-          <p className="text-xs text-muted-foreground text-center">{t('app.powered')}</p>
+          <>
+            <p className="text-xs text-muted-foreground text-center">{t('app.powered')}</p>
+            <p className="text-xs text-muted-foreground text-center">{t('app.copyright')}</p>
+          </>
         )}
       </SidebarFooter>
     </Sidebar>

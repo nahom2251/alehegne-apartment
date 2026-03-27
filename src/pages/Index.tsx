@@ -45,7 +45,8 @@ const Index = () => {
       </div>
 
       <footer className="text-center py-3 text-xs text-muted-foreground border-t border-border">
-        {t('app.powered')}
+        <p>{t('app.powered')}</p>
+        <p>{t('app.copyright')}</p>
       </footer>
     </div>
   );
