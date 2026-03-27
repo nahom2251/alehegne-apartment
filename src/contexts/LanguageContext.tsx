@@ -10,7 +10,8 @@ const translations: Translations = {
   // App
   'app.name': { en: 'Alehegne Sewnet Apartment', am: 'አለኸኝ ሰውነት አፓርትመንት' },
   'app.short': { en: 'AS Apt.', am: 'AS Apt.' },
-  'app.powered': { en: 'Powered by NUN Tech', am: 'በNUN Tech ቴክ የተሰራ' },
+  'app.powered': { en: 'Powered by NUN Tech', am: 'በNUN Tech የተሰራ' },
+  'app.copyright': { en: `© ${new Date().getFullYear()} NUN Tech. All rights reserved.`, am: `© ${new Date().getFullYear()} NUN Tech. መብቱ በህግ የተጠበቀ ነው.` },
   
   // Index
   'index.adminLogin': { en: 'Admin Login', am: 'የአስተዳዳሪ መግቢያ' },
